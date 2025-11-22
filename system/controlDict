@@ -1,0 +1,57 @@
+/*--------------------------------*- C++ -*----------------------------------*  =========                 |
+  \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+\*---------------------------------------------------------------------------*/
+FoamFile { version 2.0; format ascii; class dictionary; object controlDict; }
+
+application     simpleFoam; // foamRun -solver incompressibleFluid'in modülü
+
+startFrom       startTime;
+startTime       0;
+stopAt          endTime;
+endTime         1000;
+deltaT          1;
+writeControl    timeStep;
+writeInterval   1000;
+purgeWrite      0;
+writeFormat     ascii;
+writePrecision  6;
+writeCompression off;
+timeFormat      general;
+timePrecision   6;
+runTimeModifiable true;
+
+PIMPLE
+{
+    steady          yes;
+    nCorrectors     2;
+    nNonOrthogonalCorrectors 0;
+    pRefCell        0;
+    pRefValue       0;
+}
+
+functions
+{
+    // 1. Basıncı log'a yaz
+    inletPressure
+    {
+        type            surfaceFieldValue;
+        libs            ("libfieldFunctionObjects.so");
+        writeControl    writeTime;
+        log             yes;
+        writeFields     false;
+        regionType      patch;
+        name            inlet;
+        operation       areaAverage;
+        fields          ( p );
+    }
+    // 2. WSS'yi PyVista için diske yaz
+    calcWSS
+    {
+        type            wallShearStress;
+        libs            ("libfieldFunctionObjects.so");
+        turbulenceModel laminar;
+        writeControl    writeTime;
+        log             no;
+    }
+}
+// ************************************************************************* //

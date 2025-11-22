@@ -1,0 +1,20 @@
+# Python gereksizleri
+__pycache__/
+*.pyc
+
+# OpenFOAM Ham Simülasyon Klasörleri (Çok büyükler!)
+# run_ ile başlayan klasörleri yoksay
+run_*
+*/run_*
+
+# Log dosyaları (Çok şişebilir)
+*.log
+log.*
+
+# Gereksiz sıkıştırılmış dosyalar
+*.zip
+*.tar.gz
+
+# Ancak AI verilerini KORU (Bunları yüklemek istiyoruz)
+!ai_dataset_3D_Snappy/simulation_results.csv
+!ai_dataset_3D_Snappy/npy_files/

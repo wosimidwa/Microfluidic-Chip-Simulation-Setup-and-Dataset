@@ -1,0 +1,41 @@
+/*--------------------------------*- C++ -*----------------------------------*  =========                 |
+  \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+internalField   uniform (0.01 0 0); // Hız: 0.01 m/s
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;
+        value           uniform (0.01 0 0);
+    }
+    outlet
+    {
+        type            zeroGradient;
+    }
+    walls
+    {
+        type            noSlip;
+    }
+    pillars
+    {
+        type            noSlip;
+    }
+    // --- 3D DÜZELTMESİ ---
+    frontAndBack
+    {
+        type            noSlip; // 3D Duvar olduğu için sürtünme var
+    }
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
