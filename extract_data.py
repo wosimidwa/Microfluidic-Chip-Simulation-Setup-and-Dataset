@@ -6,7 +6,6 @@ import os
 import re
 import shutil
 
-# --- AYARLAR ---
 DATASET_DIR_NAME = "ai_dataset_3D_Snappy" 
 CSV_FILENAME = "final_training_data.csv"
 
@@ -17,7 +16,6 @@ output_csv_path = os.path.join(dataset_dir, CSV_FILENAME)
 
 os.makedirs(npy_files_dir, exist_ok=True)
 
-# --- Yardımcı: WSS Hesaplatıcı ---
 def generate_wss_field(run_folder_name):
     uid, gid = os.getuid(), os.getgid()
     case_path = os.path.join(DATASET_DIR_NAME, run_folder_name)
@@ -28,42 +26,28 @@ def generate_wss_field(run_folder_name):
         return True
     except: return False
 
-# --- YARDIMCI: "Kutuyu Açma" Fonksiyonu (Hata Düzeltici) ---
 def get_data_block(dataset):
-    """
-    Eğer veri bir MultiBlock (kutu) ise, içindeki gerçek veriyi (UnstructuredGrid/PolyData) bulup çıkarır.
-    """
     if dataset is None:
         return None
-    
-    # Eğer zaten veri ise, olduğu gibi döndür
     if not isinstance(dataset, pv.MultiBlock):
         return dataset
     
-    # Eğer MultiBlock ise, içindeki blokları gez
-    # Genellikle tek bir blok vardır, onu döndür
     if dataset.n_blocks > 0:
-        # İlk dolu bloğu bulup döndür
         for i in range(dataset.n_blocks):
             block = dataset.get_block(i)
             if block is not None and not isinstance(block, pv.MultiBlock):
                 return block
             elif isinstance(block, pv.MultiBlock):
-                # İç içe kutu varsa, recursive (tekrar) çağır
                 inner = get_data_block(block)
                 if inner is not None: return inner
     
     return None
-
-# --- Ana Döngü ---
-print(f"--- VERİ HASADI BAŞLIYOR ---")
-print(f"Klasör: {dataset_dir}")
+    
+print(f"Directory {dataset_dir}")
 
 try:
     all_folders = sorted([f for f in os.listdir(dataset_dir) if f.startswith("run_")])
-except: print("Klasör bulunamadı."); exit()
-
-print(f"Toplam {len(all_folders)} klasör tarandı.")
+except: print(f"Directory not found: {dataset_dir}"); exit()
 
 results = []
 dummy_foam = os.path.join(dataset_dir, "temp.foam")
@@ -78,7 +62,6 @@ for run_name in all_folders:
         gap = float(match.group(2))
     except: continue
 
-    # 1. BASINÇ
     log_file = os.path.join(run_path, "log.run")
     pres = None
     if os.path.exists(log_file):
@@ -89,10 +72,8 @@ for run_name in all_folders:
                     break
     
     if pres is None:
-        print(f"[ATLA] {run_name}: Basınç yok.")
+        print(f"SKIPPED {run_name}: There is no Pa value. ")
         continue
-
-    # 2. WSS OLUŞTUR
     wss_generated = False
     for time_dir in os.listdir(run_path):
         if time_dir.replace('.', '', 1).isdigit():
@@ -102,7 +83,6 @@ for run_name in all_folders:
     if not wss_generated:
         generate_wss_field(run_name)
 
-    # 3. WSS OKU ve KAYDET
     try:
         case_foam = os.path.join(run_path, "case.foam")
         shutil.copy(dummy_foam, case_foam)
@@ -114,32 +94,21 @@ for run_name in all_folders:
         mesh_root = reader.read()
         
         wss_vecs = None
-        
-        # --- HATAYI ÇÖZEN KISIM ---
-        # Hiyerarşiyi manuel gezmek yerine hedef odaklı gidiyoruz
-        
-        # A. Önce 'pillars' yamasını bulmaya çalış
         target_mesh = None
         try:
-            # PyVista'da MultiBlock sözlük gibi davranır
             if 'boundary' in mesh_root.keys():
                 boundary = mesh_root['boundary']
                 if 'pillars' in boundary.keys():
-                    # 'pillars' bloğunu al ve "Kutuyu Aç" fonksiyonuna gönder
                     target_mesh = get_data_block(boundary['pillars'])
         except: pass
-
-        # B. Eğer pillars bulunamazsa veya boşsa, ana mesh'e (internalMesh) bak
+            
         if target_mesh is None:
-             # Ana mesh'i "Kutudan Çıkar"
              target_mesh = get_data_block(mesh_root)
 
-        # C. Şimdi veriyi kontrol et (Artık target_mesh'in bir Mesh nesnesi olduğundan eminiz)
         if target_mesh is not None:
             if 'wallShearStress' in target_mesh.array_names:
                 wss_vecs = target_mesh['wallShearStress']
             elif 'U' in target_mesh.point_data:
-                # Yedek plan: Hesapla
                 target_mesh = target_mesh.compute_derivative(scalars="U")
                 wss_calc = target_mesh.wall_shear_stress(viscosity=1.35e-6)
                 if 'wallShearStress' in wss_calc.point_data:
@@ -171,6 +140,6 @@ if os.path.exists(dummy_foam): os.remove(dummy_foam)
 if results:
     df = pd.DataFrame(results)
     df.to_csv(output_csv_path, index=False)
-    print(f"\n✅ İŞLEM TAMAM: {len(results)} veri kaydedildi.")
+    print(f"\n Process completed: {len(results)} dataset is saved.")
 else:
-    print("\n❌ Veri bulunamadı.")
+    print("\n ERROR: There is no data.")
